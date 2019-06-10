@@ -1,0 +1,136 @@
+version: '3'
+services:
+  db:
+    container_name: spring-database
+    build:
+      context: ./docker
+      dockerfile: database.docker
+    environment:
+      MYSQL_ROOT_PASSWORD: 12345678
+      MYSQL_DATABASE: karate
+      MYSQL_USER: root
+    ports:
+      - "33061:3306"
+    networks:
+      - default
+    volumes:
+      - db_data:/var/lib/mysql
+  rabbit-mq:
+     image: rabbitmq:3.8.0-beta.3-management
+     hostname: rabbit-mq
+     container_name: rabbit-mq
+     networks:
+       - default
+     environment:
+        RABBITMQ_ERLANG_COOKIE: secret
+        RABBITMQ_NODENAME: rabbit@rabbit-mq
+     ports:
+       - "15672:15672"
+  config-server:
+    depends_on:
+      - rabbit-mq
+    container_name: config-server
+    build:
+      context: ./config_server
+      dockerfile: Dockerfile
+    volumes:
+      - ./config_server:/usr/src/config_server
+    ports:
+      - "8888:8888"
+    networks:
+      - default
+  server:
+    container_name: server
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - "8762:8762"
+    environment:
+      DB_HOST: spring-database:3306
+
+  service:
+    depends_on:
+      - db
+      - server
+      - config-server
+    container_name: service
+    build:
+      context: ./service
+      dockerfile: Dockerfile
+    volumes:
+      - ./service:/usr/src/service
+    ports:
+      - "8080:8080"
+    networks:
+      - default
+    environment:
+      DB_HOST: spring-database:3306
+  additional-service:
+    depends_on:
+      - db
+      - server
+    container_name: additional-service
+    build:
+      context: ./additionalService
+      dockerfile: Dockerfile
+    volumes:
+      - ./additionalService:/usr/src/additionalService
+    ports:
+      - "5000:5000"
+    networks:
+      - default
+    environment:
+      DB_HOST: spring-database:3306
+
+  functional-service:
+    depends_on:
+      - db
+      - server
+    container_name: functional-service
+    build:
+      context: ./functionalService
+      dockerfile: Dockerfile
+    volumes:
+      - ./functionalService:/usr/src/functionalService
+    ports:
+      - "6001:6001"
+    networks:
+      - default
+    environment:
+      DB_HOST: spring-database:3306
+  consumer:
+    depends_on:
+      - db
+      - rabbit-mq
+    container_name: consumer
+    build:
+      context: ./consumer
+      dockerfile: Dockerfile
+    volumes:
+      - ./consumer:/usr/src/consumer
+    ports:
+      - "8000:8000"
+    networks:
+      - default
+    environment:
+      DB_HOST: spring-database:3306
+  client:
+    depends_on:
+      - db
+      - server
+    container_name: client
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    volumes:
+      - ./client:/usr/src/client
+    ports:
+      - "9000:9000"
+    networks:
+      - default
+    environment:
+     DB_HOST: spring-database:3306
+volumes:
+  db_data:
+  maven_cache:
