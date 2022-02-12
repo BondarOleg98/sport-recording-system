@@ -1,2 +1,2 @@
 # Recording system
-recording system to sport club
+sport club recording system
